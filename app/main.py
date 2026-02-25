@@ -147,10 +147,10 @@ async def index(
 
 
 @app.get("/chat/{peer_id}", response_class=HTMLResponse)
-async def chat_page(request: Request, peer_id: int):
+async def chat_page(request: Request, peer_id: int, msg_limit: int = Query(0, ge=0)):
     """Messages page for a specific conversation."""
     try:
-        messages = await vk.get_history(peer_id)
+        messages = await vk.get_history(peer_id, limit=msg_limit)
     except VKAPIError as e:
         return templates.TemplateResponse("error.html", {
             "request": request, "error": str(e),
@@ -184,10 +184,10 @@ async def api_conversations(
 
 
 @app.get("/api/messages/{peer_id}")
-async def api_messages(peer_id: int):
+async def api_messages(peer_id: int, msg_limit: int = Query(0, ge=0)):
     """Return all messages for a conversation as JSON."""
     try:
-        messages = await vk.get_history(peer_id)
+        messages = await vk.get_history(peer_id, limit=msg_limit)
         return {"count": len(messages), "peer_id": peer_id, "items": messages}
     except VKAPIError as e:
         return JSONResponse({"error": str(e)}, status_code=502)
@@ -197,10 +197,11 @@ async def api_messages(peer_id: int):
 async def api_all(
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
+    msg_limit: int = Query(0, ge=0),
 ):
     """Fetch everything: all conversations + all their messages, optionally filtered by date range."""
     try:
-        data = await vk.get_all_data(date_from_ts=_parse_date(date_from))
+        data = await vk.get_all_data(date_from_ts=_parse_date(date_from), msg_limit=msg_limit)
         if date_from or date_to:
             data["conversations"] = _filter_by_dates(data["conversations"], date_from, date_to)
             data["total_conversations"] = len(data["conversations"])

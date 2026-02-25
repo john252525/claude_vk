@@ -77,15 +77,25 @@ class VKClient:
 
         return all_items
 
-    async def get_history(self, peer_id: int, count: int = 200) -> list[dict]:
-        """Fetch ALL messages for a conversation with automatic pagination."""
+    async def get_history(self, peer_id: int, limit: int = 0) -> list[dict]:
+        """Fetch messages for a conversation.
+
+        limit=0 (default) fetches ALL messages.
+        limit>0 fetches at most `limit` messages (no extra pagination if limit<=200).
+        """
         all_messages = []
         offset = 0
 
         while True:
+            # Per-request count: up to 200, but no more than remaining limit
+            if limit > 0:
+                per_page = min(200, limit - len(all_messages))
+            else:
+                per_page = 200
+
             resp = await self._call("messages.getHistory", {
                 "peer_id": peer_id,
-                "count": min(count, 200),
+                "count": per_page,
                 "offset": offset,
                 "group_id": VK_GROUP_ID,
             })
@@ -96,12 +106,14 @@ class VKClient:
 
             if not messages or len(all_messages) >= total:
                 break
+            if limit > 0 and len(all_messages) >= limit:
+                break
 
             offset += len(messages)
 
         return all_messages
 
-    async def get_all_data(self, date_from_ts: int = 0) -> dict:
+    async def get_all_data(self, date_from_ts: int = 0, msg_limit: int = 0) -> dict:
         """Fetch all conversations and all their messages."""
         conversations = await self.get_conversations(date_from_ts=date_from_ts)
 
@@ -110,7 +122,7 @@ class VKClient:
             peer = conv_item["conversation"]["peer"]
             peer_id = peer["id"]
 
-            messages = await self.get_history(peer_id)
+            messages = await self.get_history(peer_id, limit=msg_limit)
 
             result.append({
                 "conversation": conv_item["conversation"],

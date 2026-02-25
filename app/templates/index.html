@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Conversations — VK Messages{% endblock %}
+{% block content %}
+
+<h2 style="margin-bottom:12px; font-size:18px;">Conversations ({{ conversations|length }})</h2>
+
+{% if conversations %}
+    {% for item in conversations %}
+        {% set conv = item.conversation %}
+        {% set peer = conv.peer %}
+        {% set title = item|get_peer_title %}
+        <a class="card" href="/chat/{{ peer.id }}">
+            <div class="card-title">{{ title }}</div>
+            <div class="card-meta">
+                <span class="badge">{{ peer.type }}</span>
+                peer_id: {{ peer.id }}
+                {% if item.last_message %}
+                    &middot; Last: {{ item.last_message.date|format_ts }}
+                {% endif %}
+                {% if conv.unread_count %}
+                    &middot; Unread: {{ conv.unread_count }}
+                {% endif %}
+            </div>
+            {% if item.last_message and item.last_message.text %}
+                <div class="card-meta" style="margin-top:4px;">
+                    {{ item.last_message.text[:120] }}{% if item.last_message.text|length > 120 %}…{% endif %}
+                </div>
+            {% endif %}
+        </a>
+    {% endfor %}
+{% else %}
+    <div class="empty">No conversations found</div>
+{% endif %}
+
+<div class="api-links">
+    JSON API:
+    <a href="/api/conversations">/api/conversations</a>
+    <a href="/api/all">/api/all</a>
+</div>
+
+{% endblock %}

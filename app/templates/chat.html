@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Chat {{ peer_id }} — VK Messages{% endblock %}
+{% block content %}
+
+<a class="back" href="/">&larr; Back to conversations</a>
+<h2 style="margin-bottom:12px; font-size:18px;">Chat {{ peer_id }} ({{ total }} messages)</h2>
+
+{% if messages %}
+    {% for msg in messages %}
+        <div class="msg {{ 'out' if msg.out else 'in' }}">
+            <div class="msg-from">{{ msg.from_id }}</div>
+            {% if msg.text %}
+                <div>{{ msg.text }}</div>
+            {% endif %}
+            {% if msg.attachments %}
+                <div class="card-meta">[{{ msg.attachments|length }} attachment(s)]</div>
+            {% endif %}
+            {% if msg.fwd_messages %}
+                <div class="card-meta">[{{ msg.fwd_messages|length }} forwarded]</div>
+            {% endif %}
+            <div class="msg-date">{{ msg.date|format_ts }}</div>
+        </div>
+    {% endfor %}
+{% else %}
+    <div class="empty">No messages</div>
+{% endif %}
+
+<div class="api-links">
+    JSON: <a href="/api/messages/{{ peer_id }}">/api/messages/{{ peer_id }}</a>
+</div>
+
+{% endblock %}

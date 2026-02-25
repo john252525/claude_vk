@@ -2,7 +2,26 @@
 {% block title %}Conversations — VK Messages{% endblock %}
 {% block content %}
 
-<h2 style="margin-bottom:12px; font-size:18px;">Conversations ({{ conversations|length }})</h2>
+<div class="card" style="margin-bottom:16px;">
+    <form method="get" action="/" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+        <div>
+            <label style="font-size:12px; color:#818c99; display:block; margin-bottom:4px;">From</label>
+            <input type="date" name="date_from" value="{{ date_from }}" style="padding:8px 10px; border:1px solid #d3d9de; border-radius:6px; font-size:14px;">
+        </div>
+        <div>
+            <label style="font-size:12px; color:#818c99; display:block; margin-bottom:4px;">To</label>
+            <input type="date" name="date_to" value="{{ date_to }}" style="padding:8px 10px; border:1px solid #d3d9de; border-radius:6px; font-size:14px;">
+        </div>
+        <button type="submit" style="padding:8px 16px; background:#4a76a8; color:#fff; border:none; border-radius:6px; font-size:14px; cursor:pointer;">Filter</button>
+        {% if date_from or date_to %}
+            <a href="/" style="padding:8px 12px; font-size:13px; color:#818c99; text-decoration:none;">Reset</a>
+        {% endif %}
+    </form>
+</div>
+
+<h2 style="margin-bottom:12px; font-size:18px;">
+    Conversations ({{ conversations|length }}{% if date_from or date_to %} of {{ total_all }}{% endif %})
+</h2>
 
 {% if conversations %}
     {% for item in conversations %}
@@ -29,7 +48,7 @@
         </a>
     {% endfor %}
 {% else %}
-    <div class="empty">No conversations found</div>
+    <div class="empty">No conversations found{% if date_from or date_to %} for selected dates{% endif %}</div>
 {% endif %}
 
 <div class="api-links">

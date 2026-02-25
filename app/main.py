@@ -2,7 +2,7 @@ import hmac
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -94,9 +94,32 @@ async def logout():
 # ── HTML pages ──────────────────────────────────────────────
 
 
+def _filter_by_dates(conversations: list[dict], date_from: str | None, date_to: str | None) -> list[dict]:
+    """Filter conversations by last_message.date within [date_from, date_to]."""
+    if not date_from and not date_to:
+        return conversations
+
+    ts_from = int(datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) if date_from else 0
+    ts_to = int(datetime.strptime(date_to, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) + 86399 if date_to else float("inf")
+
+    result = []
+    for item in conversations:
+        last_msg = item.get("last_message")
+        if not last_msg:
+            continue
+        ts = last_msg.get("date", 0)
+        if ts_from <= ts <= ts_to:
+            result.append(item)
+    return result
+
+
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    """Main page — list of conversations."""
+async def index(
+    request: Request,
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+):
+    """Main page — list of conversations with optional date filter."""
     try:
         conversations = await vk.get_conversations()
     except VKAPIError as e:
@@ -104,9 +127,15 @@ async def index(request: Request):
             "request": request, "error": str(e),
         })
 
+    total_all = len(conversations)
+    conversations = _filter_by_dates(conversations, date_from, date_to)
+
     return templates.TemplateResponse("index.html", {
         "request": request,
         "conversations": conversations,
+        "total_all": total_all,
+        "date_from": date_from or "",
+        "date_to": date_to or "",
     })
 
 
@@ -134,10 +163,14 @@ async def chat_page(request: Request, peer_id: int):
 
 
 @app.get("/api/conversations")
-async def api_conversations():
-    """Return all conversations as JSON."""
+async def api_conversations(
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+):
+    """Return all conversations as JSON, optionally filtered by date range."""
     try:
         data = await vk.get_conversations()
+        data = _filter_by_dates(data, date_from, date_to)
         return {"count": len(data), "items": data}
     except VKAPIError as e:
         return JSONResponse({"error": str(e)}, status_code=502)

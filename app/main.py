@@ -187,9 +187,17 @@ async def api_messages(peer_id: int):
 
 
 @app.get("/api/all")
-async def api_all():
-    """Fetch everything: all conversations + all their messages."""
+async def api_all(
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+):
+    """Fetch everything: all conversations + all their messages, optionally filtered by date range."""
     try:
-        return await vk.get_all_data()
+        data = await vk.get_all_data()
+        # Filter conversations by date
+        if date_from or date_to:
+            data["conversations"] = _filter_by_dates(data["conversations"], date_from, date_to)
+            data["total_conversations"] = len(data["conversations"])
+        return data
     except VKAPIError as e:
         return JSONResponse({"error": str(e)}, status_code=502)

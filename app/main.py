@@ -94,13 +94,20 @@ async def logout():
 # ── HTML pages ──────────────────────────────────────────────
 
 
+def _parse_date(date_str: str | None) -> int:
+    """Parse YYYY-MM-DD to unix timestamp (UTC), or 0 if empty."""
+    if not date_str:
+        return 0
+    return int(datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp())
+
+
 def _filter_by_dates(conversations: list[dict], date_from: str | None, date_to: str | None) -> list[dict]:
     """Filter conversations by last_message.date within [date_from, date_to]."""
     if not date_from and not date_to:
         return conversations
 
-    ts_from = int(datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) if date_from else 0
-    ts_to = int(datetime.strptime(date_to, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) + 86399 if date_to else float("inf")
+    ts_from = _parse_date(date_from)
+    ts_to = _parse_date(date_to) + 86399 if date_to else float("inf")
 
     result = []
     for item in conversations:
@@ -121,7 +128,7 @@ async def index(
 ):
     """Main page — list of conversations with optional date filter."""
     try:
-        conversations = await vk.get_conversations()
+        conversations = await vk.get_conversations(date_from_ts=_parse_date(date_from))
     except VKAPIError as e:
         return templates.TemplateResponse("error.html", {
             "request": request, "error": str(e),
@@ -169,7 +176,7 @@ async def api_conversations(
 ):
     """Return all conversations as JSON, optionally filtered by date range."""
     try:
-        data = await vk.get_conversations()
+        data = await vk.get_conversations(date_from_ts=_parse_date(date_from))
         data = _filter_by_dates(data, date_from, date_to)
         return {"count": len(data), "items": data}
     except VKAPIError as e:
@@ -193,8 +200,7 @@ async def api_all(
 ):
     """Fetch everything: all conversations + all their messages, optionally filtered by date range."""
     try:
-        data = await vk.get_all_data()
-        # Filter conversations by date
+        data = await vk.get_all_data(date_from_ts=_parse_date(date_from))
         if date_from or date_to:
             data["conversations"] = _filter_by_dates(data["conversations"], date_from, date_to)
             data["total_conversations"] = len(data["conversations"])

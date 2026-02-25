@@ -33,8 +33,13 @@ class VKClient:
             await asyncio.sleep(0.05)
             return data["response"]
 
-    async def get_conversations(self, count: int = 200) -> list[dict]:
-        """Fetch ALL conversations with automatic pagination."""
+    async def get_conversations(self, count: int = 200, date_from_ts: int = 0) -> list[dict]:
+        """Fetch ALL conversations with automatic pagination.
+
+        If date_from_ts is set, stop paginating once last_message.date
+        drops below this timestamp (VK returns conversations sorted by
+        last message date descending).
+        """
         all_items = []
         offset = 0
 
@@ -50,14 +55,22 @@ class VKClient:
             profiles = {p["id"]: p for p in resp.get("profiles", [])}
             groups = {g["id"]: g for g in resp.get("groups", [])}
 
+            hit_cutoff = False
             for item in items:
                 item["_profiles"] = profiles
                 item["_groups"] = groups
 
-            all_items.extend(items)
+                if date_from_ts:
+                    last_msg = item.get("last_message")
+                    if last_msg and last_msg.get("date", 0) < date_from_ts:
+                        hit_cutoff = True
+                        break
+
+                all_items.append(item)
+
             total = resp.get("count", 0)
 
-            if not items or len(all_items) >= total:
+            if hit_cutoff or not items or len(all_items) >= total:
                 break
 
             offset += len(items)
@@ -88,9 +101,9 @@ class VKClient:
 
         return all_messages
 
-    async def get_all_data(self) -> dict:
+    async def get_all_data(self, date_from_ts: int = 0) -> dict:
         """Fetch all conversations and all their messages."""
-        conversations = await self.get_conversations()
+        conversations = await self.get_conversations(date_from_ts=date_from_ts)
 
         result = []
         for conv_item in conversations:

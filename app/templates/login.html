@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login — VK Messages</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #edeef0; color: #222; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .login-box { background: #fff; border-radius: 12px; padding: 32px; width: 100%; max-width: 380px; box-shadow: 0 2px 12px rgba(0,0,0,.1); }
+        .login-box h1 { font-size: 20px; margin-bottom: 8px; color: #4a76a8; }
+        .login-box p { font-size: 13px; color: #818c99; margin-bottom: 20px; }
+        .login-box input[type="password"] { width: 100%; padding: 12px 14px; border: 1px solid #d3d9de; border-radius: 8px; font-size: 15px; outline: none; }
+        .login-box input[type="password"]:focus { border-color: #4a76a8; }
+        .login-box button { width: 100%; padding: 12px; margin-top: 12px; background: #4a76a8; color: #fff; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
+        .login-box button:hover { background: #3d6899; }
+        .error { color: #e64646; font-size: 13px; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>VK Group Messages</h1>
+        <p>Enter secret key to access</p>
+        <form method="post" action="/login">
+            <input type="password" name="secret" placeholder="Secret key" autofocus required>
+            <button type="submit">Login</button>
+            {% if error %}
+                <div class="error">Invalid key, try again</div>
+            {% endif %}
+        </form>
+    </div>
+</body>
+</html>

@@ -1,10 +1,13 @@
+import hmac
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, Form, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from app.auth import AuthMiddleware, COOKIE_NAME, make_session_token
+from app.config import APP_SECRET
 from app.vk_client import vk, VKAPIError
 
 
@@ -15,6 +18,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="VK Group Messages", lifespan=lifespan)
+app.add_middleware(AuthMiddleware)
 templates = Jinja2Templates(directory="app/templates")
 
 
@@ -52,6 +56,39 @@ def get_peer_title(conv_item: dict) -> str:
 
 templates.env.filters["format_ts"] = format_ts
 templates.env.filters["get_peer_title"] = get_peer_title
+
+
+# ── Auth ────────────────────────────────────────────────────
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, error: str = ""):
+    return templates.TemplateResponse("login.html", {
+        "request": request, "error": error,
+    })
+
+
+@app.post("/login")
+async def login_submit(secret: str = Form(...)):
+    if not hmac.compare_digest(secret, APP_SECRET):
+        return RedirectResponse(url="/login?error=wrong_key", status_code=302)
+
+    response = RedirectResponse(url="/", status_code=302)
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=make_session_token(),
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 30,  # 30 days
+    )
+    return response
+
+
+@app.get("/logout")
+async def logout():
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie(COOKIE_NAME)
+    return response
 
 
 # ── HTML pages ──────────────────────────────────────────────
